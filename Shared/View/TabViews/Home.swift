@@ -9,7 +9,11 @@ import SwiftUI
 
 struct Home: View {
     
-    @Namespace var animation
+    var animation : Namespace.ID
+    
+//    Shared Data...
+    @EnvironmentObject var sharedData: SharedDataModel
+    
     @StateObject var homeData: HomeViewModel = HomeViewModel()
     
     var body: some View {
@@ -17,23 +21,23 @@ struct Home: View {
             
             VStack(spacing: 15){
 //                Search Bar...
-                HStack(spacing: 15){
-                    Image(systemName: "magnifyingglass")
-                        .font(.title2)
-                        .foregroundColor(.gray)
-                    
-//                    Since we need a separate view for search bar...
-                    TextField("Search", text: .constant(""))
-                        .disabled(true)
+                ZStack{
+                    if homeData.searchActivated{
+                        SearchBar()
+                    }else{
+                        SearchBar()
+                            .matchedGeometryEffect(id: "SEARCHBAR", in: animation)
+                    }
                 }
-                .padding(.vertical,12)
-                .padding(.horizontal)
-                .background(
-                    Capsule()
-                        .strokeBorder(Color.gray,lineWidth: 0.8)
-                )
                 .frame(width: getRect().width / 1.6)
                 .padding(.horizontal,25)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    withAnimation(.easeInOut){
+                        homeData.searchActivated = true
+                    }
+                }
+               
                 
                 Text("Order online\ncollect in store")
                     .font(.custom(customFont, size: 28).bold())
@@ -103,19 +107,62 @@ struct Home: View {
         } content: {
             MoreProductsView()
         }
-
+//        Displaying Search View...
+        .overlay(
+            ZStack{
+                if homeData.searchActivated{
+                    SearchView(animation: animation)
+//                    SearchView()
+                        .environmentObject(homeData)
+                }
+            }
+        )
+    }
+    
+//    Since we're adding matched geometry effect..
+//    avoiding code replication...
+    @ViewBuilder
+    func SearchBar() -> some View {
+        HStack(spacing: 15){
+            Image(systemName: "magnifyingglass")
+                .font(.title2)
+                .foregroundColor(.gray)
+            
+//                    Since we need a separate view for search bar...
+            TextField("Search", text: .constant(""))
+                .disabled(true)
+        }
+        .padding(.vertical,12)
+        .padding(.horizontal)
+        .background(
+            Capsule()
+                .strokeBorder(Color.gray,lineWidth: 0.8)
+        )
+     
     }
     
     @ViewBuilder
     func ProductCardView(product: Product) -> some View {
         VStack(spacing: 10){
-            Image(product.productImage)
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(width: getRect().width / 2.5, height: getRect().width / 2.5)
+            
+//            Adding Matched Geometry Effect...
+            ZStack{
+                if sharedData.showDetailProduct{
+                    Image(product.productImage)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .opacity(0)
+                }else{
+                    Image(product.productImage)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .matchedGeometryEffect(id: "\(product.id)IMAGE", in: animation)
+                }
+            }
+            .frame(width: getRect().width / 2.5, height: getRect().width / 2.5)
 //            Moving image to top to look like its fixed at half top...
-                .offset(y: -80)
-                .padding(.bottom,-80)
+            .offset(y: -80)
+            .padding(.bottom,-80)
             
             Text(product.title)
                 .font(.custom(customFont, size: 18))
@@ -138,6 +185,13 @@ struct Home: View {
             Color.white
                 .cornerRadius(25)
         )
+//        showing product detail when tapped..
+        .onTapGesture {
+            withAnimation(.easeInOut){
+                sharedData.detailProduct = product
+                sharedData.showDetailProduct = true
+            }
+        }
     }
     
     @ViewBuilder
@@ -179,7 +233,7 @@ struct Home: View {
 
 struct Home_Previews: PreviewProvider {
     static var previews: some View {
-        Home()
+        MainPage()
     }
 }
 
